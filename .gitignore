@@ -1,0 +1,6 @@
+.idea
+bundler
+node_modules
+static
+*.log
+package-lock.json
