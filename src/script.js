@@ -2,87 +2,99 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-/**
- * Base
- */
-// Canvas
-const canvas = document.querySelector('canvas.webgl')
-
-// Scene
-const scene = new THREE.Scene()
-
-const axesHelper = new THREE.AxesHelper( 5 );
-scene.add( axesHelper );
-
-/**
- * Sizes
- */
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-}
-
-/**
- * Object
- */
-//const geometry = new THREE.BoxGeometry()
-const geometry = new THREE.PlaneGeometry(0.05,0.15)
-const material = new THREE.MeshBasicMaterial({ color: 0xb3b7b7 })
-const mesh = new THREE.Mesh(geometry, material)
-mesh.doubleSided = true;
-scene.add(mesh)
-
-console.log(sizes.width)
+const WINDOW_SIZE = {width: window.innerWidth, height: window.innerHeight}
+const FRAME_UI_SIZE = {width:0.05, height:0.15}
+const FRAME_UI_COLOR_DEFAULT = 0xb3b7b7
 
 
-/**
- * Camera
- */
-// Base camera
-let aspectRatio = sizes.width / sizes.height
-const camera = new THREE.OrthographicCamera(-aspectRatio, aspectRatio, -1, 1, 0.1, 100)
-//const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = -1
-camera.lookAt(new THREE.Vector3())
-scene.add(camera)
-
-// Mesh position
-const top_left_corner = new THREE.Vector3( 1, 1, -1).unproject( camera );
-const bttm_left_corner = new THREE.Vector3(top_left_corner.x, -top_left_corner.y, top_left_corner.z);
-mesh.position.set(bttm_left_corner.x-0.05/2,bttm_left_corner.y-0.15/2)
-
-//const controls = new OrbitControls(camera, canvas)
-
-window.addEventListener('resize', ()=>
+function onResize(camera, renderer, mesh)
 {
     // Update size
-    sizes.width = window.innerWidth
-    sizes.height = window.innerHeight
+    WINDOW_SIZE.width = window.innerWidth
+    WINDOW_SIZE.height = window.innerHeight
 
-    //Update camera
-    aspectRatio = sizes.width / sizes.height
+    // Update camera
+    updateCamera(camera)
+
+    // Update renderer
+    renderer.setSize(WINDOW_SIZE.width, WINDOW_SIZE.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+    moveUIFrame(mesh, camera)
+}
+
+function updateCamera(camera)
+{
+    const aspectRatio = WINDOW_SIZE.width/WINDOW_SIZE.height
     camera.aspect = aspectRatio
-    //camera.setViewOffset(-aspectRatio, aspectRatio, -1, 1, 0.1, 100)
     camera.left = -aspectRatio
     camera.right = aspectRatio
     camera.updateProjectionMatrix()
+}
 
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-    renderer.setSize(sizes.width, sizes.height)
+function makeRenderer(canvas, scene, camera)
+{
+    const renderer = new THREE.WebGLRenderer({
+        canvas: canvas
+    })
+    renderer.setSize(WINDOW_SIZE.width, WINDOW_SIZE.height)
     renderer.render(scene, camera)
-})
+    return renderer
+}
 
-const clock = new THREE.Clock()
+function update (scene, camera, renderer)
+{
+    renderer.render(scene, camera)
+    window.requestAnimationFrame( ()=>{update(scene, camera, renderer)} )
+}
 
-/**
- * Renderer
- */
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
-})
-renderer.setSize(sizes.width, sizes.height)
-renderer.render(scene, camera)
+function makeUiFrame()
+{
+    const geometry = new THREE.PlaneGeometry(FRAME_UI_SIZE.width, FRAME_UI_SIZE.height, 1)
+    const material = new THREE.MeshBasicMaterial({ color: FRAME_UI_COLOR_DEFAULT })
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.rotation.x=Math.PI
+    return mesh
+}
 
+function makeCamera()
+{
+    let aspectRatio = WINDOW_SIZE.width / WINDOW_SIZE.height
+    const camera = new THREE.OrthographicCamera(-aspectRatio, aspectRatio, -1, 1, 0.1, 100)
+    camera.position.z = 3
+    return camera
+}
+
+function getCornerPosition(camera)
+{
+    const bttmLeftCorner = new THREE.Vector3(-1,-1,1).unproject(camera);
+    return bttmLeftCorner
+}
+
+function moveWithPivotOffset(mesh, bttmLeftPosition)
+{
+    console.log(mesh.width)
+    mesh.position.set(bttmLeftPosition.x+FRAME_UI_SIZE.width/2,bttmLeftPosition.y-FRAME_UI_SIZE.height/2)
+}
+
+function moveUIFrame(uiFrame, camera)
+{
+    const bttmLeftCorner = getCornerPosition(camera);
+    moveWithPivotOffset(uiFrame, bttmLeftCorner);
+}
+
+function main()
+{
+    const canvas = document.querySelector('canvas.webgl')
+    const scene = new THREE.Scene()
+    const camera = makeCamera()
+    scene.add(camera)
+    const renderer = makeRenderer(canvas, scene, camera)
+    const uiFrame = makeUiFrame()
+    scene.add(uiFrame)
+    moveUIFrame(uiFrame, camera)
+    update(scene, camera, renderer)
+    window.addEventListener('resize', ()=>{onResize(camera, renderer, uiFrame)})
+}
+
+main()
