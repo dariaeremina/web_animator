@@ -1,13 +1,12 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import * as fr from './frame.js'
+import * as tl from './timeline.js'
 
 const WINDOW_SIZE = {width: window.innerWidth, height: window.innerHeight}
-const FRAME_UI_SIZE = {width:0.05, height:0.15}
-const FRAME_UI_COLOR_DEFAULT = 0xb3b7b7
 
-
-function onResize(camera, renderer, mesh)
+function onResize(camera, renderer, functionToRun)
 {
     // Update size
     WINDOW_SIZE.width = window.innerWidth
@@ -20,7 +19,7 @@ function onResize(camera, renderer, mesh)
     renderer.setSize(WINDOW_SIZE.width, WINDOW_SIZE.height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
-    moveUIFrame(mesh, camera)
+    functionToRun()
 }
 
 function updateCamera(camera)
@@ -42,21 +41,6 @@ function makeRenderer(canvas, scene, camera)
     return renderer
 }
 
-function update (scene, camera, renderer)
-{
-    renderer.render(scene, camera)
-    window.requestAnimationFrame( ()=>{update(scene, camera, renderer)} )
-}
-
-function makeUiFrame()
-{
-    const geometry = new THREE.PlaneGeometry(FRAME_UI_SIZE.width, FRAME_UI_SIZE.height, 1)
-    const material = new THREE.MeshBasicMaterial({ color: FRAME_UI_COLOR_DEFAULT })
-    const mesh = new THREE.Mesh(geometry, material)
-    mesh.rotation.x=Math.PI
-    return mesh
-}
-
 function makeCamera()
 {
     let aspectRatio = WINDOW_SIZE.width / WINDOW_SIZE.height
@@ -71,16 +55,10 @@ function getCornerPosition(camera)
     return bttmLeftCorner
 }
 
-function moveWithPivotOffset(mesh, bttmLeftPosition)
+function update (scene, camera, renderer)
 {
-    console.log(mesh.width)
-    mesh.position.set(bttmLeftPosition.x+FRAME_UI_SIZE.width/2,bttmLeftPosition.y-FRAME_UI_SIZE.height/2)
-}
-
-function moveUIFrame(uiFrame, camera)
-{
-    const bttmLeftCorner = getCornerPosition(camera);
-    moveWithPivotOffset(uiFrame, bttmLeftCorner);
+    renderer.render(scene, camera)
+    window.requestAnimationFrame( ()=>{update(scene, camera, renderer)} )
 }
 
 function main()
@@ -88,13 +66,17 @@ function main()
     const canvas = document.querySelector('canvas.webgl')
     const scene = new THREE.Scene()
     const camera = makeCamera()
-    scene.add(camera)
     const renderer = makeRenderer(canvas, scene, camera)
-    const uiFrame = makeUiFrame()
-    scene.add(uiFrame)
-    moveUIFrame(uiFrame, camera)
+    const bttmLeftCorner = getCornerPosition(camera);
+    const timeline = new tl.Timeline(100)
+    const timelineData = timeline.drawFrames(bttmLeftCorner)
+    const framesGroup = timelineData[0]
+
+    scene.add(camera)
+    scene.add(framesGroup)
+
     update(scene, camera, renderer)
-    window.addEventListener('resize', ()=>{onResize(camera, renderer, uiFrame)})
+    //window.addEventListener('resize', ()=>{onResize(camera, renderer, testFunction)})
 }
 
 main()
